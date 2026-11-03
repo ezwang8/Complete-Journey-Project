@@ -1,0 +1,4 @@
+#install.packages("completejourney")
+library(completejourney)
+
+data(package = "completejourney")
