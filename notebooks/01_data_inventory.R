@@ -116,4 +116,27 @@ coupon_redemptions %>%
 # Store ID sanity check
 transactions_sample %>%
   distinct(store_id) %>%
-  arrange(store_id)
+  arrange
+
+# Selecting target household
+target_household <- "256"
+
+# Campaigns received
+campaigns %>%
+  filter(household_id == target_household) %>%
+  left_join(campaign_descriptions, by = "campaign_id") %>%
+  arrange(start_date)
+
+# Coupons redeemed
+coupon_redemptions %>%
+  filter(household_id == target_household) %>%
+  arrange(redemption_date)
+
+# Transactions in sample
+transactions_sample %>%
+  filter(household_id == target_household) %>%
+  arrange(transaction_timestamp)
+
+# Demographics, if available
+demographics %>%
+  filter(household_id == target_household)
