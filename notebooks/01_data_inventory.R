@@ -140,3 +140,14 @@ transactions_sample %>%
 # Demographics, if available
 demographics %>%
   filter(household_id == target_household)
+
+coupon_redemptions %>%
+  filter(household_id == target_household) %>%
+  left_join(
+    coupons,
+    by = c("coupon_upc", "campaign_id")
+  ) %>%
+  left_join(
+    products,
+    by = "product_id"
+  )
