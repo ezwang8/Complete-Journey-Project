@@ -580,3 +580,72 @@ redemption_purchase_matches %>%
     household_id,
     redemption_date
   )
+
+# Check how many transaction matches exist per redemption event
+redemption_match_check <- redemption_purchase_matches %>%
+  count(
+    household_id,
+    campaign_id,
+    coupon_upc,
+    redemption_date,
+    name = "matching_transaction_lines"
+  )
+
+redemption_match_check %>%
+  count(
+    matching_transaction_lines,
+    name = "redemption_events"
+  )
+
+# Compare recorded redemptions with matched redemptions
+selected_redemptions %>%
+  anti_join(
+    redemption_match_check,
+    by = c(
+      "household_id",
+      "campaign_id",
+      "coupon_upc",
+      "redemption_date"
+    )
+  )
+
+# Check coupon discount values among candidate matches
+redemption_purchase_matches %>%
+  summarise(
+    candidate_lines = n(),
+    lines_with_coupon_discount =
+      sum(coupon_disc > 0, na.rm = TRUE),
+    
+    lines_with_coupon_match =
+      sum(coupon_match_disc > 0, na.rm = TRUE),
+    
+    lines_with_any_coupon_discount =
+      sum(
+        coupon_disc > 0 |
+          coupon_match_disc > 0,
+        na.rm = TRUE
+      )
+  )
+
+# Inspect candidate lines where a coupon discount is recorded
+redemption_purchase_matches %>%
+  filter(
+    coupon_disc > 0 |
+      coupon_match_disc > 0
+  ) %>%
+  select(
+    household_id,
+    campaign_id,
+    coupon_upc,
+    redemption_date,
+    basket_id,
+    product_id,
+    sales_value,
+    coupon_disc,
+    coupon_match_disc
+  ) %>%
+  arrange(
+    coupon_upc,
+    household_id,
+    redemption_date
+  )
