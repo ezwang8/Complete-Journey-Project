@@ -246,3 +246,31 @@ coupon_performance %>%
     avg_redemptions = mean(redemptions),
     median_redemptions = median(redemptions)
   )
+
+campaign_reach <- campaigns %>%
+  count(
+    campaign_id,
+    name = "households_targeted"
+  )
+
+coupon_performance <- coupon_performance %>%
+  left_join(
+    campaign_reach,
+    by = "campaign_id"
+  ) %>%
+  mutate(
+    redemptions_per_100_households =
+      100 * redemptions / households_targeted
+  )
+
+coupon_performance %>%
+  arrange(desc(redemptions_per_100_households)) %>%
+  select(
+    campaign_id,
+    coupon_upc,
+    eligible_products,
+    households_targeted,
+    redemptions,
+    redemptions_per_100_households
+  ) %>%
+  head(30)
