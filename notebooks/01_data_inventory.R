@@ -274,3 +274,16 @@ coupon_performance %>%
     redemptions_per_100_households
   ) %>%
   head(30)
+
+coupon_performance %>%
+  filter(households_targeted >= 100) %>%
+  arrange(desc(redemptions_per_100_households)) %>%
+  select(
+    campaign_id,
+    coupon_upc,
+    eligible_products,
+    households_targeted,
+    redemptions,
+    redemptions_per_100_households
+  ) %>%
+  head(30)
