@@ -151,3 +151,40 @@ coupon_redemptions %>%
     products,
     by = "product_id"
   )
+
+
+# ----------------------------------------
+# 5. COUPON ELIGIBILITY
+# ----------------------------------------
+
+coupon_eligibility <- coupons %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    name = "eligible_products"
+  )
+
+# Overall coupon eligibility distribution
+coupon_eligibility %>%
+  summarise(
+    coupons = n(),
+    min_products = min(eligible_products),
+    median_products = median(eligible_products),
+    mean_products = mean(eligible_products),
+    max_products = max(eligible_products)
+  )
+
+# Largest product sets
+coupon_eligibility %>%
+  arrange(desc(eligible_products)) %>%
+  head(20)
+
+# Household 256's redeemed coupons
+coupon_redemptions %>%
+  filter(household_id == target_household) %>%
+  distinct(campaign_id, coupon_upc) %>%
+  left_join(
+    coupon_eligibility,
+    by = c("campaign_id", "coupon_upc")
+  ) %>%
+  arrange(desc(eligible_products))
