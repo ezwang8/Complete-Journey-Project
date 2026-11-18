@@ -1,3 +1,7 @@
+# ----------------------------------------
+# 0. LIBRARIES
+# ----------------------------------------
+
 library(completejourney)
 library(dplyr)
 library(purrr)
@@ -7,7 +11,7 @@ library(tibble)
 # 1. DATA INVENTORY
 # ----------------------------------------
 
-# Define available datasets
+# 1.1 Define available datasets
 dataset_names <- c(
   "campaign_descriptions",
   "campaigns",
@@ -19,7 +23,7 @@ dataset_names <- c(
   "transactions_sample"
 )
 
-# Count rows and columns in each dataset
+# 1.2 Count rows and columns in each dataset
 inventory <- map_dfr(dataset_names, function(x) {
   
   df <- get(x)
@@ -38,7 +42,7 @@ inventory
 # 2. COLUMN INVENTORY
 # ----------------------------------------
 
-# Inspect column names and first rows
+# 2.1 Inspect column names and first rows
 for (x in dataset_names) {
   
   cat("\n\n============================\n")
@@ -56,7 +60,7 @@ for (x in dataset_names) {
 # 3. DATA STRUCTURE
 # ----------------------------------------
 
-# Inspect variable types and dataset structure
+# 3.1 Inspect variable types and dataset structure
 glimpse(campaign_descriptions)
 glimpse(campaigns)
 glimpse(coupon_redemptions)
@@ -71,14 +75,14 @@ glimpse(transactions_sample)
 # 4. DATA QUALITY / KEY CHECKS
 # ----------------------------------------
 
-# Count unique campaign entities
+# 4.1 Count unique campaign entities
 campaigns %>%
   summarise(
     households = n_distinct(household_id),
     campaigns = n_distinct(campaign_id)
   )
 
-# Count unique transaction entities
+# 4.2 Count unique transaction entities
 transactions_sample %>%
   summarise(
     households = n_distinct(household_id),
@@ -88,18 +92,18 @@ transactions_sample %>%
     weeks = n_distinct(week)
   )
 
-# Check transaction date range
+# 4.3 Check transaction date range
 transactions_sample %>%
   summarise(
     first_transaction = min(transaction_timestamp),
     last_transaction = max(transaction_timestamp)
   )
 
-# Inspect quantity distribution
+# 4.4 Inspect quantity distribution
 transactions_sample %>%
   count(quantity, sort = TRUE)
 
-# Check zero and negative transaction values
+# 4.5 Check zero and negative transaction values
 transactions_sample %>%
   summarise(
     zero_quantity = sum(quantity == 0, na.rm = TRUE),
@@ -108,7 +112,7 @@ transactions_sample %>%
     negative_sales = sum(sales_value < 0, na.rm = TRUE)
   )
 
-# Check coupon and discount usage frequency
+# 4.6 Check coupon and discount usage frequency
 transactions_sample %>%
   summarise(
     coupon_rows = sum(coupon_disc != 0, na.rm = TRUE),
@@ -116,7 +120,7 @@ transactions_sample %>%
     retail_discount_rows = sum(retail_disc != 0, na.rm = TRUE)
   )
 
-# Check campaign exposure per household
+# 4.7 Check campaign exposure per household
 campaigns %>%
   count(
     household_id,
@@ -124,7 +128,7 @@ campaigns %>%
   ) %>%
   count(campaigns_received)
 
-# Check coupon redemption frequency per household
+# 4.8 Check coupon redemption frequency per household
 coupon_redemptions %>%
   count(
     household_id,
@@ -132,15 +136,15 @@ coupon_redemptions %>%
   ) %>%
   arrange(desc(redemptions))
 
-# Inspect store IDs
+# 4.9 Inspect store IDs
 transactions_sample %>%
   distinct(store_id) %>%
   arrange(store_id)
 
-# Select target household for case study
+# 4.10 Select target household for case study
 target_household <- "256"
 
-# Inspect campaigns received by target household
+# 4.11 Inspect campaigns received by target household
 campaigns %>%
   filter(household_id == target_household) %>%
   left_join(
@@ -149,21 +153,21 @@ campaigns %>%
   ) %>%
   arrange(start_date)
 
-# Inspect coupons redeemed by target household
+# 4.12 Inspect coupons redeemed by target household
 coupon_redemptions %>%
   filter(household_id == target_household) %>%
   arrange(redemption_date)
 
-# Inspect target household transactions
+# 4.13 Inspect target household transactions
 transactions_sample %>%
   filter(household_id == target_household) %>%
   arrange(transaction_timestamp)
 
-# Inspect target household demographics
+# 4.14 Inspect target household demographics
 demographics %>%
   filter(household_id == target_household)
 
-# Join target household redemptions to eligible products
+# 4.15 Join target household redemptions to eligible products
 coupon_redemptions %>%
   filter(household_id == target_household) %>%
   left_join(
@@ -180,7 +184,7 @@ coupon_redemptions %>%
 # 5. COUPON ELIGIBILITY
 # ----------------------------------------
 
-# Count eligible products per coupon
+# 5.1 Count eligible products per coupon
 coupon_eligibility <- coupons %>%
   count(
     campaign_id,
@@ -188,7 +192,7 @@ coupon_eligibility <- coupons %>%
     name = "eligible_products"
   )
 
-# Summarize overall coupon eligibility distribution
+# 5.2 Summarize overall coupon eligibility distribution
 coupon_eligibility %>%
   summarise(
     coupons = n(),
@@ -198,12 +202,12 @@ coupon_eligibility %>%
     max_products = max(eligible_products)
   )
 
-# Inspect coupons with largest eligible product sets
+# 5.3 Inspect coupons with largest eligible product sets
 coupon_eligibility %>%
   arrange(desc(eligible_products)) %>%
   head(20)
 
-# Inspect coupon breadth for target household redemptions
+# 5.4 Inspect coupon breadth for target household redemptions
 coupon_redemptions %>%
   filter(household_id == target_household) %>%
   distinct(
@@ -221,7 +225,7 @@ coupon_redemptions %>%
 # 6. COUPON BREADTH VS REDEMPTION
 # ----------------------------------------
 
-# Count coupon redemptions
+# 6.1 Count coupon redemptions
 coupon_redemption_counts <- coupon_redemptions %>%
   count(
     campaign_id,
@@ -229,7 +233,7 @@ coupon_redemption_counts <- coupon_redemptions %>%
     name = "redemptions"
   )
 
-# Build coupon performance table
+# 6.2 Build coupon performance table
 coupon_performance <- coupon_eligibility %>%
   left_join(
     coupon_redemption_counts,
@@ -239,7 +243,7 @@ coupon_performance <- coupon_eligibility %>%
     redemptions = coalesce(redemptions, 0)
   )
 
-# Inspect narrowest coupons
+# 6.3 Inspect narrowest coupons
 coupon_performance %>%
   arrange(
     eligible_products,
@@ -247,17 +251,17 @@ coupon_performance %>%
   ) %>%
   head(20)
 
-# Inspect most redeemed coupons
+# 6.4 Inspect most redeemed coupons
 coupon_performance %>%
   arrange(desc(redemptions)) %>%
   head(20)
 
-# Inspect broadest coupons
+# 6.5 Inspect broadest coupons
 coupon_performance %>%
   arrange(desc(eligible_products)) %>%
   head(20)
 
-# Create coupon breadth groups
+# 6.6 Create coupon breadth groups
 coupon_performance <- coupon_performance %>%
   mutate(
     breadth_group = case_when(
@@ -270,7 +274,7 @@ coupon_performance <- coupon_performance %>%
     )
   )
 
-# Summarize redemption by coupon breadth
+# 6.7 Summarize redemption by coupon breadth
 coupon_performance %>%
   group_by(breadth_group) %>%
   summarise(
@@ -280,14 +284,14 @@ coupon_performance %>%
     median_redemptions = median(redemptions)
   )
 
-# Calculate campaign reach
+# 6.8 Calculate campaign reach
 campaign_reach <- campaigns %>%
   count(
     campaign_id,
     name = "households_targeted"
   )
 
-# Add campaign reach and normalized redemption rate
+# 6.9 Add campaign reach and normalized redemption rate
 coupon_performance <- coupon_performance %>%
   left_join(
     campaign_reach,
@@ -298,7 +302,7 @@ coupon_performance <- coupon_performance %>%
       100 * redemptions / households_targeted
   )
 
-# Rank coupons by normalized redemption rate
+# 6.10 Rank coupons by normalized redemption rate
 coupon_performance %>%
   arrange(desc(redemptions_per_100_households)) %>%
   select(
@@ -311,7 +315,7 @@ coupon_performance %>%
   ) %>%
   head(30)
 
-# Rank normalized redemption rates among campaigns
+# 6.11 Rank normalized redemption rates among campaigns
 # reaching at least 100 households
 coupon_performance %>%
   filter(households_targeted >= 100) %>%
@@ -326,7 +330,7 @@ coupon_performance %>%
   ) %>%
   head(30)
 
-# Compare coupon performance within campaigns
+# 6.12 Compare coupon performance within campaigns
 coupon_performance %>%
   filter(households_targeted >= 100) %>%
   group_by(campaign_id) %>%
@@ -356,7 +360,7 @@ coupon_performance %>%
 # 7. TOP COUPON PRODUCT PROFILES
 # ----------------------------------------
 
-# Identify top-performing coupons within campaigns
+# 7.1 Identify top-performing coupons within campaigns
 top_coupons <- coupon_performance %>%
   filter(households_targeted >= 100) %>%
   group_by(campaign_id) %>%
@@ -382,8 +386,7 @@ top_coupons <- coupon_performance %>%
 
 top_coupons
 
-
-# Join top coupons to their eligible products
+# 7.2 Join top coupons to their eligible products
 top_coupon_products <- top_coupons %>%
   inner_join(
     coupons,
@@ -396,8 +399,7 @@ top_coupon_products <- top_coupons %>%
 
 glimpse(top_coupon_products)
 
-
-# Summarize how broad each coupon actually is
+# 7.3 Summarize product breadth for each coupon
 coupon_content_summary <- top_coupon_products %>%
   group_by(
     campaign_id,
@@ -414,14 +416,17 @@ coupon_content_summary <- top_coupon_products %>%
   ) %>%
   left_join(
     top_coupons,
-    by = c("campaign_id", "coupon_upc", "eligible_products")
+    by = c(
+      "campaign_id",
+      "coupon_upc",
+      "eligible_products"
+    )
   ) %>%
   arrange(desc(relative_performance))
 
 coupon_content_summary
 
-
-# Most common department for each coupon
+# 7.4 Inspect most common departments for each coupon
 top_coupon_products %>%
   count(
     campaign_id,
@@ -440,8 +445,7 @@ top_coupon_products %>%
   ) %>%
   ungroup()
 
-
-# National vs private-label mix
+# 7.5 Inspect national vs private-label mix
 top_coupon_products %>%
   count(
     campaign_id,
@@ -458,8 +462,7 @@ top_coupon_products %>%
   ) %>%
   ungroup()
 
-
-# Most common product categories for each coupon
+# 7.6 Inspect most common product categories
 top_coupon_products %>%
   count(
     campaign_id,
@@ -479,8 +482,7 @@ top_coupon_products %>%
   ) %>%
   ungroup()
 
-
-# Most common product types for each coupon
+# 7.7 Inspect most common product types
 top_coupon_products %>%
   count(
     campaign_id,
@@ -500,14 +502,15 @@ top_coupon_products %>%
   ) %>%
   ungroup()
 
+
 # ----------------------------------------
 # 8. REDEMPTION BASKET MATCHING
 # ----------------------------------------
 
-# Download full transaction history
+# 8.1 Download full transaction history
 transactions <- get_transactions(verbose = TRUE)
 
-# Confirm full transaction data loaded correctly
+# 8.2 Confirm full transaction data loaded correctly
 glimpse(transactions)
 
 transactions %>%
@@ -519,14 +522,13 @@ transactions %>%
     last_date = max(transaction_timestamp)
   )
 
-# Add transaction date for matching against redemption date
+# 8.3 Add transaction date for matching
 transactions <- transactions %>%
   mutate(
     transaction_date = as.Date(transaction_timestamp)
   )
 
-
-# Select two interesting coupons for initial testing
+# 8.4 Select two coupons for initial testing
 selected_coupons <- tibble(
   campaign_id = c("12", "18"),
   coupon_upc = c(
@@ -535,7 +537,7 @@ selected_coupons <- tibble(
   )
 )
 
-# Get redemptions for selected coupons
+# 8.5 Retrieve redemptions for selected coupons
 selected_redemptions <- coupon_redemptions %>%
   semi_join(
     selected_coupons,
@@ -544,16 +546,15 @@ selected_redemptions <- coupon_redemptions %>%
 
 selected_redemptions
 
-
-# Expand each redemption to its eligible product set
+# 8.6 Expand redemptions to eligible product sets
 redemption_eligible_products <- selected_redemptions %>%
   inner_join(
     coupons,
-    by = c("campaign_id", "coupon_upc")
+    by = c("campaign_id", "coupon_upc"),
+    relationship = "many-to-many"
   )
 
-# Match redemption events to products actually purchased
-# by the same household on the same date
+# 8.7 Match eligible products to same-household purchases
 redemption_purchase_matches <- redemption_eligible_products %>%
   inner_join(
     transactions,
@@ -563,6 +564,7 @@ redemption_purchase_matches <- redemption_eligible_products %>%
     transaction_date == redemption_date
   )
 
+# 8.8 Inspect candidate redemption-purchase matches
 redemption_purchase_matches %>%
   select(
     household_id,
@@ -581,7 +583,7 @@ redemption_purchase_matches %>%
     redemption_date
   )
 
-# Check how many transaction matches exist per redemption event
+# 8.9 Count candidate transaction lines per redemption event
 redemption_match_check <- redemption_purchase_matches %>%
   count(
     household_id,
@@ -597,7 +599,7 @@ redemption_match_check %>%
     name = "redemption_events"
   )
 
-# Compare recorded redemptions with matched redemptions
+# 8.10 Identify recorded redemptions with no transaction match
 selected_redemptions %>%
   anti_join(
     redemption_match_check,
@@ -609,10 +611,11 @@ selected_redemptions %>%
     )
   )
 
-# Check coupon discount values among candidate matches
+# 8.11 Check coupon discount values among candidate matches
 redemption_purchase_matches %>%
   summarise(
     candidate_lines = n(),
+    
     lines_with_coupon_discount =
       sum(coupon_disc > 0, na.rm = TRUE),
     
@@ -627,7 +630,7 @@ redemption_purchase_matches %>%
       )
   )
 
-# Inspect candidate lines where a coupon discount is recorded
+# 8.12 Inspect candidate lines containing coupon discounts
 redemption_purchase_matches %>%
   filter(
     coupon_disc > 0 |
@@ -650,7 +653,7 @@ redemption_purchase_matches %>%
     redemption_date
   )
 
-# Compare match quality between the two test coupons
+# 8.13 Compare match quality between test coupons
 redemption_match_check %>%
   group_by(coupon_upc) %>%
   summarise(
@@ -660,7 +663,7 @@ redemption_match_check %>%
     max_candidate_lines = max(matching_transaction_lines)
   )
 
-# Count unmatched redemption events by coupon
+# 8.14 Count unmatched redemption events by coupon
 selected_redemptions %>%
   anti_join(
     redemption_match_check,
@@ -672,3 +675,149 @@ selected_redemptions %>%
     )
   ) %>%
   count(coupon_upc)
+
+
+# ----------------------------------------
+# 9. BASKET HALO - FOCUSED COUPON
+# ----------------------------------------
+
+# 9.1 Keep redemption events with exactly one eligible match
+unique_redemption_matches <- redemption_purchase_matches %>%
+  group_by(
+    household_id,
+    campaign_id,
+    coupon_upc,
+    redemption_date
+  ) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+# 9.2 Isolate clean egg-coupon redemption matches
+egg_redemption_matches <- unique_redemption_matches %>%
+  filter(
+    campaign_id == "12",
+    coupon_upc == "10000089073"
+  )
+
+egg_redemption_matches %>%
+  select(
+    household_id,
+    redemption_date,
+    basket_id,
+    product_id,
+    sales_value
+  )
+
+# 9.3 Retrieve every transaction line from egg-redemption baskets
+egg_redemption_baskets <- transactions %>%
+  semi_join(
+    egg_redemption_matches %>%
+      distinct(basket_id),
+    by = "basket_id"
+  )
+
+# 9.4 Inspect full egg-redemption baskets
+egg_redemption_baskets %>%
+  arrange(
+    basket_id,
+    transaction_timestamp
+  )
+
+# 9.5 Summarize egg-redemption basket size and value
+egg_basket_summary <- egg_redemption_baskets %>%
+  group_by(
+    basket_id,
+    household_id
+  ) %>%
+  summarise(
+    basket_sales = sum(sales_value, na.rm = TRUE),
+    basket_quantity = sum(quantity, na.rm = TRUE),
+    product_lines = n(),
+    unique_products = n_distinct(product_id),
+    .groups = "drop"
+  )
+
+egg_basket_summary
+
+# 9.6 Calculate spend outside the matched coupon item
+egg_basket_halo <- egg_basket_summary %>%
+  left_join(
+    egg_redemption_matches %>%
+      select(
+        basket_id,
+        coupon_item_sales = sales_value
+      ),
+    by = "basket_id"
+  ) %>%
+  mutate(
+    non_coupon_basket_sales =
+      basket_sales - coupon_item_sales
+  )
+
+egg_basket_halo
+
+# 9.7 Summarize basket halo across clean egg redemptions
+egg_basket_halo %>%
+  summarise(
+    redemption_baskets = n(),
+    avg_basket_sales = mean(basket_sales),
+    median_basket_sales = median(basket_sales),
+    avg_coupon_item_sales = mean(coupon_item_sales),
+    avg_non_coupon_sales = mean(non_coupon_basket_sales),
+    median_non_coupon_sales = median(non_coupon_basket_sales)
+  )
+
+# 9.8 Identify unmatched egg redemptions
+unmatched_egg_redemptions <- selected_redemptions %>%
+  filter(
+    campaign_id == "12",
+    coupon_upc == "10000089073"
+  ) %>%
+  anti_join(
+    redemption_match_check,
+    by = c(
+      "household_id",
+      "campaign_id",
+      "coupon_upc",
+      "redemption_date"
+    )
+  )
+
+unmatched_egg_redemptions
+
+# 9.9 Search for eligible purchases within one day
+# of unmatched egg redemption dates
+unmatched_egg_candidates <- unmatched_egg_redemptions %>%
+  inner_join(
+    coupons,
+    by = c("campaign_id", "coupon_upc"),
+    relationship = "many-to-many"
+  ) %>%
+  inner_join(
+    transactions,
+    by = c("household_id", "product_id")
+  ) %>%
+  mutate(
+    days_from_redemption =
+      as.integer(transaction_date - redemption_date)
+  ) %>%
+  filter(
+    abs(days_from_redemption) <= 1
+  ) %>%
+  arrange(
+    household_id,
+    redemption_date,
+    abs(days_from_redemption)
+  )
+
+# 9.10 Inspect nearby candidates for unmatched egg redemptions
+unmatched_egg_candidates %>%
+  select(
+    household_id,
+    redemption_date,
+    transaction_date,
+    days_from_redemption,
+    basket_id,
+    product_id,
+    sales_value
+  )
