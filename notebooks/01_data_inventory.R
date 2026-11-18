@@ -116,7 +116,7 @@ coupon_redemptions %>%
 # Store ID sanity check
 transactions_sample %>%
   distinct(store_id) %>%
-  arrange
+  arrange(store_id)
 
 # Selecting target household
 target_household <- "256"
