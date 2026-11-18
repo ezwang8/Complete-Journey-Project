@@ -188,3 +188,61 @@ coupon_redemptions %>%
     by = c("campaign_id", "coupon_upc")
   ) %>%
   arrange(desc(eligible_products))
+
+
+# ----------------------------------------
+# 6. COUPON BREADTH VS REDEMPTION
+# ----------------------------------------
+
+coupon_redemption_counts <- coupon_redemptions %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    name = "redemptions"
+  )
+
+coupon_performance <- coupon_eligibility %>%
+  left_join(
+    coupon_redemption_counts,
+    by = c("campaign_id", "coupon_upc")
+  ) %>%
+  mutate(
+    redemptions = coalesce(redemptions, 0)
+  )
+
+# Narrowest coupons
+coupon_performance %>%
+  arrange(eligible_products, desc(redemptions)) %>%
+  head(20)
+
+# Most redeemed coupons
+coupon_performance %>%
+  arrange(desc(redemptions)) %>%
+  head(20)
+
+# Broadest coupons
+coupon_performance %>%
+  arrange(desc(eligible_products)) %>%
+  head(20)
+
+
+coupon_performance <- coupon_performance %>%
+  mutate(
+    breadth_group = case_when(
+      eligible_products == 1 ~ "1 product",
+      eligible_products <= 5 ~ "2-5 products",
+      eligible_products <= 20 ~ "6-20 products",
+      eligible_products <= 100 ~ "21-100 products",
+      eligible_products <= 1000 ~ "101-1000 products",
+      TRUE ~ "1000+ products"
+    )
+  )
+
+coupon_performance %>%
+  group_by(breadth_group) %>%
+  summarise(
+    coupons = n(),
+    total_redemptions = sum(redemptions),
+    avg_redemptions = mean(redemptions),
+    median_redemptions = median(redemptions)
+  )
