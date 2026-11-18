@@ -649,3 +649,26 @@ redemption_purchase_matches %>%
     household_id,
     redemption_date
   )
+
+# Compare match quality between the two test coupons
+redemption_match_check %>%
+  group_by(coupon_upc) %>%
+  summarise(
+    matched_redemptions = n(),
+    avg_candidate_lines = mean(matching_transaction_lines),
+    median_candidate_lines = median(matching_transaction_lines),
+    max_candidate_lines = max(matching_transaction_lines)
+  )
+
+# Count unmatched redemption events by coupon
+selected_redemptions %>%
+  anti_join(
+    redemption_match_check,
+    by = c(
+      "household_id",
+      "campaign_id",
+      "coupon_upc",
+      "redemption_date"
+    )
+  ) %>%
+  count(coupon_upc)
