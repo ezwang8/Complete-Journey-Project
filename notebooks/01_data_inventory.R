@@ -350,3 +350,233 @@ coupon_performance %>%
     relative_performance
   ) %>%
   head(30)
+
+
+# ----------------------------------------
+# 7. TOP COUPON PRODUCT PROFILES
+# ----------------------------------------
+
+# Identify top-performing coupons within campaigns
+top_coupons <- coupon_performance %>%
+  filter(households_targeted >= 100) %>%
+  group_by(campaign_id) %>%
+  mutate(
+    campaign_avg_rate =
+      mean(redemptions_per_100_households),
+    
+    relative_performance =
+      redemptions_per_100_households - campaign_avg_rate
+  ) %>%
+  ungroup() %>%
+  arrange(desc(relative_performance)) %>%
+  slice_head(n = 10) %>%
+  select(
+    campaign_id,
+    coupon_upc,
+    eligible_products,
+    households_targeted,
+    redemptions,
+    redemptions_per_100_households,
+    relative_performance
+  )
+
+top_coupons
+
+
+# Join top coupons to their eligible products
+top_coupon_products <- top_coupons %>%
+  inner_join(
+    coupons,
+    by = c("campaign_id", "coupon_upc")
+  ) %>%
+  left_join(
+    products,
+    by = "product_id"
+  )
+
+glimpse(top_coupon_products)
+
+
+# Summarize how broad each coupon actually is
+coupon_content_summary <- top_coupon_products %>%
+  group_by(
+    campaign_id,
+    coupon_upc
+  ) %>%
+  summarise(
+    eligible_products = n_distinct(product_id),
+    departments = n_distinct(department, na.rm = TRUE),
+    brand_types = n_distinct(brand, na.rm = TRUE),
+    categories = n_distinct(product_category, na.rm = TRUE),
+    product_types = n_distinct(product_type, na.rm = TRUE),
+    manufacturers = n_distinct(manufacturer_id, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    top_coupons,
+    by = c("campaign_id", "coupon_upc", "eligible_products")
+  ) %>%
+  arrange(desc(relative_performance))
+
+coupon_content_summary
+
+
+# Most common department for each coupon
+top_coupon_products %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    department,
+    sort = TRUE
+  ) %>%
+  group_by(
+    campaign_id,
+    coupon_upc
+  ) %>%
+  slice_max(
+    n,
+    n = 5,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+
+# National vs private-label mix
+top_coupon_products %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    brand,
+    sort = TRUE
+  ) %>%
+  group_by(
+    campaign_id,
+    coupon_upc
+  ) %>%
+  mutate(
+    share = n / sum(n)
+  ) %>%
+  ungroup()
+
+
+# Most common product categories for each coupon
+top_coupon_products %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    product_category,
+    sort = TRUE
+  ) %>%
+  filter(!is.na(product_category)) %>%
+  group_by(
+    campaign_id,
+    coupon_upc
+  ) %>%
+  slice_max(
+    n,
+    n = 5,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+
+# Most common product types for each coupon
+top_coupon_products %>%
+  count(
+    campaign_id,
+    coupon_upc,
+    product_type,
+    sort = TRUE
+  ) %>%
+  filter(!is.na(product_type)) %>%
+  group_by(
+    campaign_id,
+    coupon_upc
+  ) %>%
+  slice_max(
+    n,
+    n = 5,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+# ----------------------------------------
+# 8. REDEMPTION BASKET MATCHING
+# ----------------------------------------
+
+# Download full transaction history
+transactions <- get_transactions(verbose = TRUE)
+
+# Confirm full transaction data loaded correctly
+glimpse(transactions)
+
+transactions %>%
+  summarise(
+    rows = n(),
+    households = n_distinct(household_id),
+    baskets = n_distinct(basket_id),
+    first_date = min(transaction_timestamp),
+    last_date = max(transaction_timestamp)
+  )
+
+# Add transaction date for matching against redemption date
+transactions <- transactions %>%
+  mutate(
+    transaction_date = as.Date(transaction_timestamp)
+  )
+
+
+# Select two interesting coupons for initial testing
+selected_coupons <- tibble(
+  campaign_id = c("12", "18"),
+  coupon_upc = c(
+    "10000089073",  # Focused egg offer
+    "10000085475"   # Broad 4,294-product offer
+  )
+)
+
+# Get redemptions for selected coupons
+selected_redemptions <- coupon_redemptions %>%
+  semi_join(
+    selected_coupons,
+    by = c("campaign_id", "coupon_upc")
+  )
+
+selected_redemptions
+
+
+# Expand each redemption to its eligible product set
+redemption_eligible_products <- selected_redemptions %>%
+  inner_join(
+    coupons,
+    by = c("campaign_id", "coupon_upc")
+  )
+
+# Match redemption events to products actually purchased
+# by the same household on the same date
+redemption_purchase_matches <- redemption_eligible_products %>%
+  inner_join(
+    transactions,
+    by = c("household_id", "product_id")
+  ) %>%
+  filter(
+    transaction_date == redemption_date
+  )
+
+redemption_purchase_matches %>%
+  select(
+    household_id,
+    campaign_id,
+    coupon_upc,
+    redemption_date,
+    basket_id,
+    product_id,
+    sales_value,
+    coupon_disc,
+    coupon_match_disc
+  ) %>%
+  arrange(
+    coupon_upc,
+    household_id,
+    redemption_date
+  )
